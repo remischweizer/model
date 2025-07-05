@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Fick-Stewart Model</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; }
+        
+        #header-bar {
+            position: fixed;
+            top: 10px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: transparent;
+            z-index: 1000;
+        }
+
+        #header-title {
+            text-align: left;
+            font-family: Arial, sans-serif;
+        }
+
+        .main-title {
+            font-size: 1.4em;
+            font-weight: bold;
+            color: #222;
+        }
+
+        .version {
+            font-size: 0.8em;
+            color: #666;
+        }
+
+        #header-buttons {
+            display: flex;
+            gap: 5px;
+        }
+
+        #header-buttons button {
+            font-size: 1.2em;
+            padding: 8px 12px;
+            cursor: pointer;
+            border: none;
+            background: #f0f0f0;
+            border-radius: 5px;
+            min-width: 40px;
+        }
+
+        #header-buttons button:hover {
+            background: #e0e0e0;
+        }
+
+        #btn-reset {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 40px;
+            padding: 8px 12px;
+            font-family: 'Arial Black', Arial, sans-serif;
+        }
+
+        #btn-reset::before {
+            content: "↻";
+            display: block;
+            font-size: 1.2em;
+            line-height: 1;
+            font-weight: 900;
+            letter-spacing: -0.05em;
+        }
+
+        #btn-pause {
+            font-family: Arial, sans-serif;
+            font-size: 1.2em;
+            min-width: 40px;
+            padding: 8px 12px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #btn-pause::before {
+            content: "▶";
+            display: block;
+            font-size: 1.3em;
+            line-height: 1;
+        }
+
+        #btn-pause.playing::before {
+            content: "❚❚";
+            font-size: 1.2em;
+            letter-spacing: 1px;
+            font-weight: bold;
+        }
+
+        #compteur { font-size: 3em; margin: 20px; }
+        button { padding: 10px 10px; font-size: 1.2em; margin: 5px; }
+        #main-content { 
+            display: none;
+            margin-top: 60px;
+        } 
+        #loading-message { font-size: 1.5em; color: #555; }
+        
+        #input-container, #output-container {
+            border: 8px solid rgba(50, 49, 49, 0.902);
+            border-radius: 12px;
+            background-color: #f5f5f5;
+            padding: 10px;
+            margin: 10px auto;
+            width: 360px;
+            box-sizing: border-box;
+        }
+        
+        .value-controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .value-display {
+            min-width: 40px;
+            text-align: center;
+            font-size: 1.1em;
+            font-weight: bold;
+        }
+        
+        .value-btn {
+            padding: 3px 8px;
+            font-size: 0.9em;
+            min-width: 25px;
+            border-radius: 4px;
+        }
+
+        .group-title {
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-size: 1.4em;
+            font-weight: bold;
+            text-align: center;
+        }
+        
+        #container-zones {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 10px;
+        }
+
+        .zone {
+            border: 4px solid;
+            border-radius: 15px;
+            padding: 7px;
+            width: 100%;
+            box-sizing: border-box;
+            text-align: center;
+            background-color: #f0f0f0;
+        }
+
+        .red-zone {
+            border-color: #a00000;
+            background-color: #ad4444;
+            color: black;
+        }
+
+        .blue-zone {
+            border-color: #003399;
+            background-color: #3c66a9;
+            color: black;
+        }
+
+        .zone-title {
+            font-weight: bold;
+            font-size: 1.25em;
+            text-align: center;
+            margin-top: 0;
+            margin-bottom: 15px;
+        }
+
+        .red-zone .zone-title {
+            color: white;
+        }
+
+        .blue-zone .zone-title {
+            color: white;
+        }
+
+        .zone-subtitle {
+            margin-top: 0;
+            margin-bottom: 10px;
+            font-size: 1em;
+            text-align: center;
+        }
+
+        .item {
+            margin-bottom: 5px;
+            border-radius: 12px;
+            border: 2px solid black;
+            background-color: white;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+            padding: 5px 7px;
+        }
+
+        .item h2 {
+            margin-bottom: 5px;
+        }
+
+        .item div {
+            margin-top: 0;
+        }
+
+        .item:last-child {
+            margin-bottom: 0;
+        }
+
+        .unit {
+            font-size: 0.75em;
+            color: #333;
+        }
+
+        #green-zone {
+            max-width: 320px;
+            margin: 0 auto 2px auto;
+            border-color: #012e01 !important;
+            background-color: #24801e;
+            color: black;
+            border: 4px solid;
+            border-radius: 15px;
+            padding: 7px;
+            box-sizing: border-box;
+            text-align: center;
+        }
+
+        #arrow-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 10px;
+        }
+
+        #arrow-deco {
+            font-size: 6em;
+            margin: 0 15px;
+            display: flex;
+            align-items: center;
+            height: 100%;
+        }
+
+        #io-containers {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+        }
+
+        #output-container-wrapper {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            height: 100%;
+        }
+
+        #loading-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: rgba(255, 255, 255, 0.9);
+            z-index: 1000;
+        }
+        
+        .loader {
+            width: 48px;
+            height: 48px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 16px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .loading-text {
+            font-size: 1.2em;
+            color: #555;
+        }
+        .loading-hint {
+            font-size: 0.9em;
+            font-style: italic;
+            color: #666;
+            margin-top: 10px;
+            max-width: 300px;
+            text-align: center;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.7);
+        }
+        
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 700px;
+            max-height: 80vh;
+            overflow-y: auto;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .modal-note {
+            font-size: 0.9em;
+            font-style: italic;
+            color: #666;
+            margin-top: -10px;
+            margin-bottom: 15px;
+        }
+        
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .close:hover {
+            color: black;
+        }
+        
+        .var-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        
+        .var-table th, .var-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        
+        .var-table th {
+            background-color: #f2f2f2;
+        }
+        
+        .var-table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        
+        #btn-info {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 40px;
+            padding: 8px 12px;
+            font-family: Arial, sans-serif;
+        }
+        
+        #btn-info::before {
+            content: "i";
+            display: block;
+            font-size: 1.2em;
+            line-height: 1;
+            font-weight: bold;
+            font-style: italic;
+        }
+
+        .source-note {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            font-size: 0.8em;
+            color: #666;
+            background-color: rgba(255,255,255,0.7);
+            padding: 3px 6px;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="loading-container">
+        <div class="loader"></div>
+        <div class="loading-text">Initializing model...</div>
+        <div class="loading-hint">
+            <em>This may take several tens of seconds and requires an internet connection.</em>
+        </div>
+    </div>
+
+    <div id="main-content">
+        <div id="header-bar">
+            <div id="header-title">
+                <span class="main-title">Fick-Stewart Model</span>
+                <span class="version">version 1.0</span>
+            </div>
+            <div id="header-buttons">
+                <button id="btn-info"></button>
+                <button id="btn-reset"></button>
+                <button id="btn-pause"></button>
+            </div>
+        </div>
+        
+        <div id="io-containers">
+            <div id="input-container">
+                <h2 class="group-title">Input variables</h2>
+                <div class="item">
+                    <h2 class="zone-subtitle">Alveolar ventilation <span class="unit">(L.min<sup>-1</sup>)</span></h2>
+                    <div class="value-controls">
+                        <button class="value-btn" id="btn-av-minus">-</button>
+                        <div class="value-display" id="alveolar_ventilation">6</div>
+                        <button class="value-btn" id="btn-av-plus">+</button>
+                    </div>
+                </div>
+                <div class="item">
+                    <h2 class="zone-subtitle">SID variation <span class="unit">(mmol.L<sup>-1</sup>)</span></h2>
+                    <div class="value-controls">
+                        <button class="value-btn" id="btn-sid-minus">-</button>
+                        <div class="value-display" id="sid_variation">0</div>
+                        <button class="value-btn" id="btn-sid-plus">+</button>
+                    </div>
+                </div>
+                <div class="item">
+                    <h2 class="zone-subtitle">Non-volatile weak acid <span class="unit">(mmol.L<sup>-1</sup>)</span></h2>
+                    <div class="value-controls">
+                        <button class="value-btn" id="btn-atot-minus">-</button>
+                        <div class="value-display" id="atot_variation">0</div>
+                        <button class="value-btn" id="btn-atot-plus">+</button>
+                    </div>
+                </div>
+                <div class="item">
+                    <h2 class="zone-subtitle">Cardiac output <span class="unit">(L.min<sup>-1</sup>)</span></h2>
+                    <div class="value-controls">
+                        <button class="value-btn" id="btn-co-minus">-</button>
+                        <div class="value-display" id="cardiac_output">5</div>
+                        <button class="value-btn" id="btn-co-plus">+</button>
+                    </div>
+                </div>
+                <div class="item">
+                    <h2 class="zone-subtitle">CO<sub>2</sub> production <span class="unit">(mmol.min<sup>-1</sup>)</span></h2>
+                    <div class="value-controls">
+                        <button class="value-btn" id="btn-vco2-minus">-</button>
+                        <div class="value-display" id="co2_production">3</div>
+                        <button class="value-btn" id="btn-vco2-plus">+</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="arrow-deco">➔</div>
+            
+            <div id="output-container">
+                <h2 class="group-title">Output variables</h2>
+                <div id="container-zones">
+                    <div id="venous-zone" class="zone blue-zone">
+                        <h3 class="zone-title">Venous</h3>
+                        <div class="item">
+                            <h2 class="zone-subtitle">pH</h2>
+                            <div id="venous_ph">0</div>
+                        </div>
+                        <div class="item">
+                            <h2 class="zone-subtitle">pCO<sub>2</sub> <span class="unit">(mmHg)</span></h2>
+                            <div id="venous_pco2">0</div>
+                        </div>
+                        <div class="item">
+                            <h2 class="zone-subtitle">HCO<sub>3</sub><sup>-</sup> <span class="unit">(mmol.L<sup>-1</sup>)</span></h2>
+                            <div id="venous_hco3">0</div>
+                        </div>
+                        <div class="item">
+                            <h2 class="zone-subtitle">tCO<sub>2</sub> <span class="unit">(mmol.L<sup>-1</sup>)</span></h2>
+                            <div id="venous_tco2">0</div>
+                        </div>
+                    </div>
+                    <div id="arterial-zone" class="zone red-zone">
+                        <h3 class="zone-title">Arterial</h3>
+                        <div class="item">
+                            <h2 class="zone-subtitle">pH</h2>
+                            <div id="arterial_ph">0</div>
+                        </div>
+                        <div class="item">
+                            <h2 class="zone-subtitle">pCO<sub>2</sub> <span class="unit">(mmHg)</span></h2>
+                            <div id="arterial_pco2">0</div>
+                        </div>
+                        <div class="item">
+                            <h2 class="zone-subtitle">HCO<sub>3</sub><sup>-</sup> <span class="unit">(mmol.L<sup>-1</sup>)</span></h2>
+                            <div id="arterial_hco3">0</div>
+                        </div>
+                        <div class="item">
+                            <h2 class="zone-subtitle">tCO<sub>2</sub> <span class="unit">(mmol.L<sup>-1</sup>)</span></h2>
+                            <div id="arterial_tco2">0</div>
+                        </div>
+                    </div>
+                </div>
+                <div id="green-zone" class="zone green-zone">
+                    <div class="item">
+                        <h2 class="zone-subtitle">CO<sub>2</sub> elimination<span class="unit">(mmol.min<sup>-1</sup>)</span></h2>
+                        <div id="co2_elimination_rate">0</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="infoModal" class="modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h2>Model Calibration</h2>
+                <p class="modal-note"><em>Please refer to the original article for detailed explanations.</em></p>
+                <table class="var-table">
+                    <thead>
+                        <tr>
+                            <th>Variable</th>
+                            <th>Value</th>
+                        </tr>
+                    </thead>
+                    <tbody id="var-table-body">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="source-note">Calculation details available in page source</div>
+
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.23.4/full/pyodide.js"></script>
+    <script>
+        let pyodide;
+
+        const INPUTVARIABLES = {
+            alveolarVentilation: { default: 6, min: 1, max: 20 },
+            sidVariation: { default: 0, min: -25, max: 50 },
+            atotVariation: { default: 0, min: -18, max: 36 },
+            cardiacOutput: { default: 5, min: 1, max: 15 },
+            co2Production: { default: 3, min: 1, max: 8 }
+        };
+
+        let alveolarVentilation = INPUTVARIABLES.alveolarVentilation.default;
+        let sidVariation = INPUTVARIABLES.sidVariation.default;
+        let atotVariation = INPUTVARIABLES.atotVariation.default;
+        let cardiacOutput = INPUTVARIABLES.cardiacOutput.default;
+        let co2Production = INPUTVARIABLES.co2Production.default;
+
+        function updateAlveolarVentilation(value) {
+            alveolarVentilation = Math.max(INPUTVARIABLES.alveolarVentilation.min, 
+                                         Math.min(INPUTVARIABLES.alveolarVentilation.max, value));
+            document.getElementById("alveolar_ventilation").textContent = alveolarVentilation;
+            updatePythonModel();
+        }
+        
+        function updateSidVariation(value) {
+            sidVariation = Math.max(INPUTVARIABLES.sidVariation.min, 
+                                  Math.min(INPUTVARIABLES.sidVariation.max, value));
+            document.getElementById("sid_variation").textContent = sidVariation;
+            updatePythonModel();
+        }
+        
+        function updateAtotVariation(value) {
+            atotVariation = Math.max(INPUTVARIABLES.atotVariation.min, 
+                                   Math.min(INPUTVARIABLES.atotVariation.max, value));
+            document.getElementById("atot_variation").textContent = atotVariation;
+            updatePythonModel();
+        }
+        
+        function updateCardiacOutput(value) {
+            cardiacOutput = Math.max(INPUTVARIABLES.cardiacOutput.min, 
+                                   Math.min(INPUTVARIABLES.cardiacOutput.max, value));
+            document.getElementById("cardiac_output").textContent = cardiacOutput;
+            updatePythonModel();
+        }
+        
+        function updateCo2Production(value) {
+            co2Production = Math.max(INPUTVARIABLES.co2Production.min, 
+                                   Math.min(INPUTVARIABLES.co2Production.max, value));
+            document.getElementById("co2_production").textContent = co2Production;
+            updatePythonModel();
+        }
+        
+        async function resetToDefaults() {
+            updateAlveolarVentilation(INPUTVARIABLES.alveolarVentilation.default);
+            updateSidVariation(INPUTVARIABLES.sidVariation.default);
+            updateAtotVariation(INPUTVARIABLES.atotVariation.default);
+            updateCardiacOutput(INPUTVARIABLES.cardiacOutput.default);
+            updateCo2Production(INPUTVARIABLES.co2Production.default);
+            await pyodide.globals.get("js_reset").resetVenousTotalCO2();
+        }
+        
+        function updatePythonModel() {
+            pyodide.globals.get("js").alveolarVentilation = alveolarVentilation;
+            pyodide.globals.get("js").sidVariation = sidVariation;
+            pyodide.globals.get("js").atotVariation = atotVariation;
+            pyodide.globals.get("js").cardiacOutput = cardiacOutput;
+            pyodide.globals.get("js").co2Production = co2Production;
+        }
+                
+        document.getElementById("btn-av-plus").addEventListener("click", () => updateAlveolarVentilation(alveolarVentilation + 1));
+        document.getElementById("btn-av-minus").addEventListener("click", () => updateAlveolarVentilation(alveolarVentilation - 1));
+        document.getElementById("btn-sid-plus").addEventListener("click", () => updateSidVariation(sidVariation + 1));
+        document.getElementById("btn-sid-minus").addEventListener("click", () => updateSidVariation(sidVariation - 1));
+        document.getElementById("btn-atot-plus").addEventListener("click", () => updateAtotVariation(atotVariation + 1));
+        document.getElementById("btn-atot-minus").addEventListener("click", () => updateAtotVariation(atotVariation - 1));
+        document.getElementById("btn-co-plus").addEventListener("click", () => updateCardiacOutput(cardiacOutput + 1));
+        document.getElementById("btn-co-minus").addEventListener("click", () => updateCardiacOutput(cardiacOutput - 1));
+        document.getElementById("btn-vco2-plus").addEventListener("click", () => updateCo2Production(co2Production + 1));
+        document.getElementById("btn-vco2-minus").addEventListener("click", () => updateCo2Production(co2Production - 1));
+        document.getElementById("btn-reset").addEventListener("click", async () => {await resetToDefaults();});
+
+        async function main() {
+            pyodide = await loadPyodide({
+                indexURL: "https://cdn.jsdelivr.net/pyodide/v0.23.4/full/"
+            });
+            
+            await pyodide.loadPackage(["sympy", "pillow"]);
+            
+            pyodide.globals.set("js", {
+                document: window.document,
+                Date: window.Date,
+                JSON: window.JSON
+            });
+
+            pyodide.globals.set("js_reset", {
+                resetVenousTotalCO2: async () => {
+                    await pyodide.runPython(`
+                        next_venous_total_co2 = baseline_venous_total_co2
+                        print("Venous total CO2 reset to baseline:", baseline_venous_total_co2)
+                    `);
+                }
+            });
+            
+            await pyodide.runPython(`
+                import sys
+                import js
+                import asyncio
+                import math
+                from sympy import symbols, solve
+                
+                pkw = 13.6
+                kw = 10 ** (-pkw)
+                pka = 7.0
+                ka = 10 ** (-pka)
+                pk1 = 6.1
+                k1 = 10 ** (-pk1)
+                pk2 = 10.22
+                k2 = 10 ** (-pk2)
+                S = 0.00003
+
+                total_volume = 3
+                baseline_strong_ion_difference = 0.04905006405426563
+                baseline_non_volatile_weak_acid = 35 / 1000
+                baseline_alveolar_ventilation = 6
+                baseline_co2_production = 3 / 1000
+                baseline_cardiac_output = 5
+                baseline_arterial_ph = 7.40
+                baseline_arterial_pco2 = 40
+                
+                baseline_arterial_h = 10 ** (-baseline_arterial_ph)
+                baseline_arterial_total_co2 = baseline_arterial_pco2 * S + k1 * baseline_arterial_pco2 * S / baseline_arterial_h + k1 * k2 * baseline_arterial_pco2 * S / (baseline_arterial_h ** 2)
+                baseline_venous_total_co2 = baseline_arterial_total_co2 + baseline_co2_production / baseline_cardiac_output
+                baseline_venous_x = symbols('baseline_venous_x')
+                baseline_venous_h = solve ( baseline_venous_x ** 5 + (k1 + ka + baseline_strong_ion_difference) * baseline_venous_x ** 4 + (
+                                        k1 * k2 + ka * k1 - kw - baseline_non_volatile_weak_acid * ka - baseline_venous_total_co2 * k1 + k1 * baseline_strong_ion_difference + ka * baseline_strong_ion_difference) * baseline_venous_x ** 3 + (
+                                                    ka * k1 * k2 - kw * k1 - kw * ka - baseline_non_volatile_weak_acid * ka * k1 - 2 * baseline_venous_total_co2 * k1 * k2 - ka * baseline_venous_total_co2 * k1 + k1 * k2 * baseline_strong_ion_difference + ka * k1 * baseline_strong_ion_difference) * baseline_venous_x ** 2 + (
+                                                    ka * k1 * k2 * baseline_strong_ion_difference - kw * k1 * k2 - kw * ka * k1 - baseline_non_volatile_weak_acid * ka * k1 * k2 - 2 * ka * baseline_venous_total_co2 * k1 * k2) * baseline_venous_x - kw * ka * k1 * k2, baseline_venous_x)
+                baseline_venous_h = baseline_venous_h[4]       
+                baseline_venous_pco2 = baseline_venous_total_co2 / ((1 + k1 / baseline_venous_h + k1 * k2 / (baseline_venous_h ** 2)) * S)
+                baseline_co2_elimination = - baseline_co2_production
+                baseline_alveolar_pco2 = baseline_arterial_pco2        
+                K = baseline_alveolar_pco2 * baseline_alveolar_ventilation / baseline_co2_elimination
+                D = baseline_co2_elimination / (baseline_alveolar_pco2 - baseline_venous_pco2 )
+
+                arterial_ph = 0
+                arterial_pco2 = 0
+                arterial_hco3 = 0
+                arterial_total_co2 = 0
+                venous_ph = 0
+                venous_pco2 = 0
+                venous_hco3 = 0
+                venous_total_co2 = 0
+                co2_elimination = 0
+                elapsed_time_between_successive_values = 0
+                next_venous_total_co2 = baseline_venous_total_co2
+
+                is_paused = False
+                
+                def update_display():
+                    js.document.getElementById("arterial_ph").textContent = f"{arterial_ph:.2f}"
+                    js.document.getElementById("arterial_pco2").textContent = f"{arterial_pco2:.0f}"
+                    js.document.getElementById("arterial_hco3").textContent = f"{arterial_hco3*1000:.1f}"
+                    js.document.getElementById("arterial_tco2").textContent = f"{arterial_total_co2*1000:.1f}"
+                    js.document.getElementById("venous_ph").textContent = f"{venous_ph:.2f}"
+                    js.document.getElementById("venous_pco2").textContent = f"{venous_pco2:.0f}"
+                    js.document.getElementById("venous_hco3").textContent = f"{venous_hco3*1000:.1f}"
+                    js.document.getElementById("venous_tco2").textContent = f"{venous_total_co2*1000:.1f}"
+                    js.document.getElementById("co2_elimination_rate").textContent = f"{co2_elimination*1000:.2f}"
+                
+                async def increment_loop():
+                    global next_venous_total_co2, X, arterial_ph, arterial_pco2, arterial_hco3, arterial_total_co2, venous_ph, venous_pco2, venous_hco3, venous_total_co2, co2_elimination
+                    while True:
+                        if not is_paused:
+                            alveolar_ventilation = float(js.alveolarVentilation)
+                            strong_ion_difference = baseline_strong_ion_difference + float(js.sidVariation) / 1000
+                            non_volatile_weak_acid = baseline_non_volatile_weak_acid + float(js.atotVariation) / 1000
+                            cardiac_output = float(js.cardiacOutput)
+                            co2_production = float(js.co2Production) / 1000
+                            venous_total_co2 = next_venous_total_co2
+                            venous_x = symbols('venous_x')
+                            venous_h = solve ( venous_x ** 5 + (k1 + ka + strong_ion_difference) * venous_x ** 4 + (
+                                k1 * k2 + ka * k1 - kw - non_volatile_weak_acid * ka - venous_total_co2 * k1 + k1 * strong_ion_difference + ka * strong_ion_difference) * venous_x ** 3 + (
+                                            ka * k1 * k2 - kw * k1 - kw * ka - non_volatile_weak_acid * ka * k1 - 2 * venous_total_co2 * k1 * k2 - ka * venous_total_co2 * k1 + k1 * k2 * strong_ion_difference + ka * k1 * strong_ion_difference) * venous_x ** 2 + (
+                                            ka * k1 * k2 * strong_ion_difference - kw * k1 * k2 - kw * ka * k1 - non_volatile_weak_acid * ka * k1 * k2 - 2 * ka * venous_total_co2 * k1 * k2) * venous_x - kw * ka * k1 * k2, venous_x )
+                            venous_h = venous_h[4]
+                            venous_ph = -math.log10(venous_h)
+                            venous_pco2 = venous_h ** 2 * venous_total_co2 / ((venous_h ** 2 + k1 * venous_h + k1 * k2) * S)
+                            venous_hco3 = k1 * venous_h * venous_total_co2 / (venous_h ** 2 + k1 * venous_h + k1 * k2)            
+                            co2_elimination = alveolar_ventilation * D * venous_pco2 / (D * K - alveolar_ventilation)
+                            arterial_total_co2 = venous_total_co2 + co2_elimination / cardiac_output            
+                            arterial_x = symbols('arterial_x')
+                            arterial_h = solve ( arterial_x ** 5 + (k1 + ka + strong_ion_difference) * arterial_x ** 4 + (
+                                                k1 * k2 + ka * k1 - kw - non_volatile_weak_acid * ka - arterial_total_co2 * k1 + k1 * strong_ion_difference + ka * strong_ion_difference) * arterial_x ** 3 + (
+                                                            ka * k1 * k2 - kw * k1 - kw * ka - non_volatile_weak_acid * ka * k1 - 2 * arterial_total_co2 * k1 * k2 - ka * arterial_total_co2 * k1 + k1 * k2 * strong_ion_difference + ka * k1 * strong_ion_difference) * arterial_x ** 2 + (
+                                                            ka * k1 * k2 * strong_ion_difference - kw * k1 * k2 - kw * ka * k1 - non_volatile_weak_acid * ka * k1 * k2 - 2 * ka * arterial_total_co2 * k1 * k2) * arterial_x - kw * ka * k1 * k2, arterial_x )
+                            arterial_h = arterial_h[4]
+                            arterial_ph = -math.log10(arterial_h)
+                            arterial_pco2 = arterial_h ** 2 * arterial_total_co2 / ((arterial_h ** 2 + k1 * arterial_h + k1 * k2) * S)
+                            arterial_hco3 = k1 * arterial_h * arterial_total_co2 / (arterial_h ** 2 + k1 * arterial_h + k1 * k2)
+
+                            sys.stdout.flush()
+                            
+                            update_display()
+                            next_venous_total_co2 = arterial_total_co2 + co2_production / cardiac_output
+                        await asyncio.sleep(.001)
+                
+                asyncio.ensure_future(increment_loop())
+                
+                def toggle_pause():
+                    global is_paused
+                    is_paused = not is_paused
+                    return is_paused
+            `);
+
+            document.getElementById("loading-container").style.display = "none";
+            document.getElementById("main-content").style.display = "block";
+
+            document.getElementById("btn-pause").addEventListener("click", async () => {
+                const isPaused = await pyodide.runPython(`toggle_pause()`);
+                const btn = document.getElementById("btn-pause");
+                btn.classList.toggle("playing", !isPaused);
+            });
+
+            document.getElementById("btn-pause").classList.add("playing");
+            
+            resetToDefaults();
+        }
+        
+        main();
+        
+        async function showInitVariables() {
+            if (!pyodide) {
+                console.error("Pyodide not loaded yet");
+                return;
+            }
+            
+            try {
+                const values = await pyodide.runPython(`
+                    [
+                        pkw, pka, pk1, pk2, S,
+                        total_volume, baseline_strong_ion_difference, 
+                        baseline_non_volatile_weak_acid, baseline_alveolar_ventilation,
+                        baseline_co2_production, baseline_cardiac_output,
+                        baseline_arterial_ph, baseline_arterial_pco2, baseline_venous_pco2
+                    ]
+                `).toJs();
+
+                const vars = [
+                    { name: "pKw", value: values[0], unit: "", description: "Negative logarithm of water dissociation constant" },
+                    { name: "pKa", value: values[1], unit: "", description: "Negative logarithm of non-volatile weak acid" },
+                    { name: "pK1", value: values[2], unit: "", description: "Negative logarithm of first CO₂ dissociation constant" },
+                    { name: "pK2", value: values[3], unit: "", description: "Negative logarithm of second CO₂ dissociation constant" },
+                    { name: "S", value: (values[4]*1000).toFixed(2), unit: "mmol.L⁻¹.mmHg⁻¹", description: "CO₂ solubility coefficient in plasma" },
+                    { name: "Total Volume", value: values[5], unit: "L" },
+                    { name: "Baseline Strong Ion Difference", value: (values[6]*1000).toFixed(0), unit: "mmol.L⁻¹" },
+                    { name: "Baseline Non-Volatile Weak Acid Content", value: values[7]*1000, unit: "mmol.L⁻¹" },
+                    { name: "Baseline Alveolar Ventilation", value: values[8], unit: "L.min⁻¹" },
+                    { name: "Baseline CO₂ production", value: values[9]*1000, unit: "mmol.min⁻¹" },
+                    { name: "Baseline Cardiac Output", value: values[10], unit: "L.min⁻¹" },
+                    { name: "Baseline Arterial pH", value: values[11], unit: "" },
+                    { name: "Baseline Arterial pCO₂", value: values[12], unit: "mmHg" },
+                    { name: "Baseline Δ pCO₂", value: (values[13]-values[12]).toFixed(0), unit: "mmHg", description: "Veno-arterial difference of pCO₂" },
+                ];
+
+                const tableBody = document.getElementById("var-table-body");
+                tableBody.innerHTML = "";
+                
+                for (const v of vars) {
+                    const row = document.createElement("tr");
+                    
+                    const nameCell = document.createElement("td");
+                    
+                    const nameSpan = document.createElement("div");
+                    nameSpan.textContent = v.name;
+                    nameSpan.style.fontWeight = "bold";
+                    nameCell.appendChild(nameSpan);
+                    
+                    if (v.description) {
+                        const descSpan = document.createElement("div");
+                        descSpan.textContent = v.description;
+                        descSpan.style.fontSize = "0.8em";
+                        descSpan.style.fontStyle = "italic";
+                        descSpan.style.color = "#666";
+                        descSpan.style.marginTop = "2px";
+                        nameCell.appendChild(descSpan);
+                    }
+
+                    row.appendChild(nameCell);
+                    
+                    const valueCell = document.createElement("td");
+                    valueCell.textContent = v.unit ? `${v.value} ${v.unit}` : v.value;
+                    row.appendChild(valueCell);
+                    
+                    tableBody.appendChild(row);
+                }
+                
+                document.getElementById("infoModal").style.display = "block";
+            } catch (error) {
+                console.error("Error showing init variables:", error);
+            }
+        }
+        
+        document.getElementById("btn-info").addEventListener("click", showInitVariables);
+        
+        document.querySelector(".close").addEventListener("click", function() {
+            document.getElementById("infoModal").style.display = "none";
+        });
+        
+        window.addEventListener("click", function(event) {
+            if (event.target == document.getElementById("infoModal")) {
+                document.getElementById("infoModal").style.display = "none";
+            }
+        });
+    </script>
+</body>
+</html>
