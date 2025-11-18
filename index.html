@@ -52,7 +52,7 @@
         .loading-text { font-size: 1.2em; color: #555; }
         .loading-hint { font-size: 0.9em; font-style: italic; color: #666; margin-top: 10px; max-width: 300px; text-align: center; }
         .modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.7); }
-        .modal-content { background-color: #fefefe; margin: 5% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 700px; max-height: 80vh; overflow-y: auto; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
+        .modal-content {    background-color: #fefefe; margin: 3% auto; padding: 25px; border: 1px solid #888; width: 90%; max-width: 900px; max-height: 85vh; overflow-y: auto; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);}
         .modal-note { font-size: 0.9em; font-style: italic; color: #666; margin-top: -10px; margin-bottom: 15px; }
         .close { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
         .close:hover { color: black; }
@@ -60,6 +60,18 @@
         .var-table th, .var-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
         .var-table th { background-color: #f2f2f2; }
         .var-table tr:nth-child(even) { background-color: #f9f9f9; }
+        .var-table {    width: 100%;    border-collapse: collapse;    margin-top: 15px;    table-layout: fixed; }
+        .var-table td {font-size: 0.85em;}
+        .var-table td:first-child {font-weight: normal; }
+        .var-table td:last-child {font-style: italic; color: #666;}
+        .var-table th:nth-child(1),
+        .var-table td:nth-child(1) {    width: 35%; }
+        .var-table th:nth-child(2),
+        .var-table td:nth-child(2) {    width: 20%;}
+        .var-table th:nth-child(3),
+        .var-table td:nth-child(3) {    width: 45%; }
+        .var-table th, .var-table td {    border: 1px solid #ddd;    padding: 10px 12px;     text-align: left;    word-wrap: break-word;    vertical-align: top; }
+        .var-table th {     background-color: #f2f2f2;    font-weight: bold;}
         #btn-info { position: relative; display: flex; align-items: center; justify-content: center; min-width: 40px; padding: 8px 12px; font-family: Arial, sans-serif; }
         #btn-info::before { content: "i"; display: block; font-size: 1.2em; line-height: 1; font-weight: bold; font-style: italic; }
         .source-note { position: fixed; bottom: 10px; right: 10px; font-size: 0.8em; color: #666; background-color: rgba(255,255,255,0.7); padding: 3px 6px; border-radius: 3px; }
@@ -92,7 +104,7 @@
     <div id="main-content">
         <div id="header-bar">
             <div id="header-title">
-                <span class="main-title">Computational model</span>
+                <span class="main-title">Dynamic CO<sub>2</sub> model</span>
                 <span class="version">version 1.0</span>
             </div>
             <div id="header-buttons">
@@ -208,18 +220,50 @@
                 <span class="close">&times;</span>
                 <h2>Model Calibration</h2>
                 <p class="modal-note"><em>Please refer to the original article for detailed explanations.</em></p>
+
+                <h3>Constants</h3>
                 <table class="var-table">
                     <thead>
                         <tr>
                             <th>Variable</th>
                             <th>Value</th>
+                            <th>Justification</th>
                         </tr>
                     </thead>
-                    <tbody id="var-table-body">
+                    <tbody id="var-table-const">
+                        <!-- lignes constantes insérées ici dynamiquement -->
+                    </tbody>
+                </table>
+
+                <h3>Baseline Input</h3>
+                <table class="var-table">
+                    <thead>
+                        <tr>
+                            <th>Variable</th>
+                            <th>Value</th>
+                            <th>Justification</th>
+                        </tr>
+                    </thead>
+                    <tbody id="var-table-baseline-input">
+                        <!-- lignes baseline input insérées ici dynamiquement -->
+                    </tbody>
+                </table>
+
+                <h3>Baseline Output</h3>
+                <table class="var-table">
+                    <thead>
+                        <tr>
+                            <th>Variable</th>
+                            <th>Value</th>
+                            <th>Justification</th>
+                        </tr>
+                    </thead>
+                    <tbody id="var-table-baseline-output">
                     </tbody>
                 </table>
             </div>
         </div>
+
     </div>
 
     <div class="source-note">Calculation details available in page source code</div>
@@ -582,78 +626,95 @@
         
         main();
         
+        
+        function formatScientific(number, decimals = 2) {
+            if (number === 0) return "0";
+            if (Math.abs(number) >= 0.001 && Math.abs(number) < 10000) {
+                return number.toFixed(decimals);
+            }
+            return number.toExponential(decimals);
+        }
+        
         async function showInitVariables() {
             if (!pyodide) {
                 console.error("Pyodide not loaded yet");
                 return;
             }
-            
+
             try {
                 const values = await pyodide.runPython(`
                     [
-                        pkw, pka, pk1, pk2, S,
+                        kw, ka, k1, k2, S, D, K,
                         total_volume, baseline_strong_ion_difference, 
                         baseline_non_volatile_weak_acid, baseline_alveolar_ventilation,
                         baseline_co2_production, baseline_cardiac_output,
                         baseline_arterial_ph, baseline_arterial_pco2, baseline_venous_pco2
                     ]
                 `).toJs();
-
-                const vars = [
-                    { name: "pKw", value: values[0], unit: "", description: "Negative logarithm of water dissociation constant" },
-                    { name: "pKa", value: values[1], unit: "", description: "Negative logarithm of non-volatile weak acid" },
-                    { name: "pK1", value: values[2], unit: "", description: "Negative logarithm of first CO₂ dissociation constant" },
-                    { name: "pK2", value: values[3], unit: "", description: "Negative logarithm of second CO₂ dissociation constant" },
-                    { name: "S", value: (values[4]*1000).toFixed(2), unit: "mmol.L⁻¹.mmHg⁻¹", description: "CO₂ solubility coefficient in plasma" },
-                    { name: "Total Volume", value: values[5], unit: "L" },
-                    { name: "Baseline Strong Ion Difference", value: (values[6]*1000).toFixed(0), unit: "mmol.L⁻¹" },
-                    { name: "Baseline Non-Volatile Weak Acid Content", value: values[7]*1000, unit: "mmol.L⁻¹" },
-                    { name: "Baseline Alveolar Ventilation", value: values[8], unit: "L.min⁻¹" },
-                    { name: "Baseline CO₂ production", value: values[9]*1000, unit: "mmol.min⁻¹" },
-                    { name: "Baseline Cardiac Output", value: values[10], unit: "L.min⁻¹" },
-                    { name: "Baseline Arterial pH", value: values[11], unit: "" },
-                    { name: "Baseline Arterial pCO₂", value: values[12], unit: "mmHg" },
-                    { name: "Baseline Δ pCO₂", value: (values[13]-values[12]).toFixed(0), unit: "mmHg", description: "Veno-arterial difference of pCO₂" },
+                const constants = [
+                    { name: "Water dissociation constant", value: formatScientific(values[0], 2), unit: "mol².L⁻²", description: "", justification: "From reference <a href='https://doi.org/10.1186/s41077-023-00255-2' target='_blank'>doi.org/10.1186/s41077-023-00255-2</a>" },
+                    { name: "Non-volatile weak acid constant dissociation", value: formatScientific(values[1],2), unit: "mol.L⁻¹", description: "", justification: "Arbitrary choice" },
+                    { name: "CO₂ , H₂O / HCO₃⁻ apparent constant dissociation", value: formatScientific(values[2], 2), unit: "mol.L⁻¹", description: "", justification: "From reference <a href='https://doi.org/10.1186/s41077-023-00255-2' target='_blank'>doi.org/10.1186/s41077-023-00255-2</a>" },
+                    { name: "HCO₃⁻ / CO₃⁻² contant dissociation", value: formatScientific(values[3],2), unit: "mol.L⁻¹", justification: "From reference <a href='https://doi.org/10.1186/s41077-023-00255-2' target='_blank'>doi.org/10.1186/s41077-023-00255-2</a>" },
+                    { name: "CO₂ solubility coefficient in plasma", value: (values[4]*1000).toFixed(2), unit: "mmol.L⁻¹.mmHg⁻¹", description: "", justification: "From reference <a href='https://doi.org/10.1186/s41077-023-00255-2' target='_blank'>doi.org/10.1186/s41077-023-00255-2</a>" },
+                    { name: "Diffusion capacity of the lungs", value: (values[5]*1000).toFixed(2), unit: "mmol.min⁻¹.mmHg⁻¹", justification: "Calculated with other calibration values, assuming baseline alveolar pCO₂ is equal to baseline arterial pCO₂" },
+                    { name: "Constant of the basic alveolar ventilation equation", value: formatScientific(values[6]/1000,0), unit: "mmHg.L.mmol⁻¹", justification: "Calculated with other calibration values, assuming baseline alveolar pCO₂ is equal to baseline arterial pCO₂" }
                 ];
+                const baselineInputs = [
+                    { name: "Total Volume", value: values[7], unit: "L" , justification:"Assumed normal value"},
+                    { name: "Strong Ion Difference", value: (values[8]*1000).toFixed(0), unit: "mmol.L⁻¹", justification: "Calculated with other calibration values to obtain baseline output values" },
+                    { name: "Non-Volatile Weak Acid Content", value: values[9]*1000, unit: "mmol.L⁻¹", justification: "Calculated with other calibration values to obtain baseline output values" },
+                    { name: "Alveolar Ventilation", value: values[10], unit: "L.min⁻¹", justification: "Assumed normal value" },
+                    { name: "CO₂ production", value: values[11]*1000, unit: "mmol.min⁻¹", justification: "Assumed normal value" },
+                    { name: "Cardiac Output", value: values[12], unit: "L.min⁻¹", justification: "Assumed normal value" }
+                ];
+                const baselineOutputs = [
+                    { name: "Arterial pH", value: values[13], unit: "", justification: "Assumed normal value" },
+                    { name: "Arterial pCO₂", value: values[14], unit: "mmHg", justification: "Assumed normal value" },
+                    { name: "Veno-arterial difference of pCO₂", value: (values[15]-values[14]).toFixed(0), unit: "mmHg", justification: "Assumed normal value" }
+                ];
+                function fillTable(tableId, vars) {
+                    const tableBody = document.getElementById(tableId);
+                    tableBody.innerHTML = "";
+                    for (const v of vars) {
+                        const row = document.createElement("tr");
+                        const nameCell = document.createElement("td");
+                        const nameSpan = document.createElement("div");
+                        nameSpan.textContent = v.name;
+                        nameSpan.style.fontWeight = "bold";
+                        nameCell.appendChild(nameSpan);
+                        if (v.description) {
+                            const descSpan = document.createElement("div");
+                            descSpan.textContent = v.description;
+                            descSpan.style.fontSize = "0.8em";
+                            descSpan.style.fontStyle = "italic";
+                            descSpan.style.color = "#666";
+                            descSpan.style.marginTop = "2px";
+                            nameCell.appendChild(descSpan);
+                        }
+                        row.appendChild(nameCell);
 
-                const tableBody = document.getElementById("var-table-body");
-                tableBody.innerHTML = "";
-                
-                for (const v of vars) {
-                    const row = document.createElement("tr");
-                    
-                    const nameCell = document.createElement("td");
-                    
-                    const nameSpan = document.createElement("div");
-                    nameSpan.textContent = v.name;
-                    nameSpan.style.fontWeight = "bold";
-                    nameCell.appendChild(nameSpan);
-                    
-                    if (v.description) {
-                        const descSpan = document.createElement("div");
-                        descSpan.textContent = v.description;
-                        descSpan.style.fontSize = "0.8em";
-                        descSpan.style.fontStyle = "italic";
-                        descSpan.style.color = "#666";
-                        descSpan.style.marginTop = "2px";
-                        nameCell.appendChild(descSpan);
+                        const valueCell = document.createElement("td");
+                        valueCell.textContent = v.unit ? `${v.value} ${v.unit}` : v.value;
+                        row.appendChild(valueCell);
+
+                        const justificationCell = document.createElement("td");
+                        justificationCell.innerHTML = v.justification || "";
+                        row.appendChild(justificationCell);
+
+                        tableBody.appendChild(row);
                     }
-
-                    row.appendChild(nameCell);
-                    
-                    const valueCell = document.createElement("td");
-                    valueCell.textContent = v.unit ? `${v.value} ${v.unit}` : v.value;
-                    row.appendChild(valueCell);
-                    
-                    tableBody.appendChild(row);
                 }
-                
+                fillTable("var-table-const", constants);
+                fillTable("var-table-baseline-input", baselineInputs);
+                fillTable("var-table-baseline-output", baselineOutputs);
                 document.getElementById("infoModal").style.display = "block";
+
             } catch (error) {
                 console.error("Error showing init variables:", error);
             }
         }
-        
+      
         document.getElementById("btn-info").addEventListener("click", showInitVariables);
         
         document.querySelector(".close").addEventListener("click", function() {
@@ -668,3 +729,4 @@
     </script>
 </body>
 </html>
+
